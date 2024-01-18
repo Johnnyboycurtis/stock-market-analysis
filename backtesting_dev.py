@@ -57,10 +57,11 @@ class BuyAndHoldStrategySignal:
     Buy and just hold
     Will always return True on decision
     """
-    def __init__(self, symbol: str, monies: [int,float], income = '') -> None:
+    def __init__(self, symbol: str, monies: [int,float], income: [int,float] = None) -> None:
         self.symbol = symbol.upper()
         self.holdings = Holdings()
         self.monies = monies
+        self.income = income
     
     def decision(self, data):
         # buy and hold strategy
@@ -81,10 +82,18 @@ class BuyAndHoldStrategySignal:
     def run(self, data, date_column = 'Date'):
         if isinstance(data, pd.Series):
             data = data.to_frame(self.symbol).reset_index() # index is ideally the date
+
+        if self.income:
+            dates = data[date_column]
+            income_dates = dates.groupby(by = [dates.dt.year, dates.dt.month]).max()
         
         for i, row in tqdm(data.iterrows()):
             curr_date = row[date_column]
             curr_price = row[self.symbol]
+            if self.income:
+                idx = (curr_date == income_dates).sum()
+                if idx:
+                    self.monies += self.income
             if i == 0:
                 self.start_price = curr_price
                 self.start_date = curr_date
@@ -104,10 +113,11 @@ class BuyAndHoldStrategySignal:
 
 
 class BuyAndHoldDrawDownStrategySignal:
-    def __init__(self, symbol: str, monies: [int,float]) -> None:
+    def __init__(self, symbol: str, monies: [int,float], income: [int,float] = None) -> None:
         self.symbol = symbol.upper()
         self.holdings = Holdings()
         self.monies = monies
+        self.income = income
     
     def decision(self, data):
         # features should be a dataframe
@@ -129,6 +139,9 @@ class BuyAndHoldDrawDownStrategySignal:
             return True, min(quantity, 2)
     
         elif ratio < 3:
+            # on average, I want to only buy one share once a week
+            # so we'll reduce chances to only buy once a week
+            # using random() < 0.2
             return random() < 0.2, min(quantity, 1)
         
         else:
@@ -148,17 +161,26 @@ class BuyAndHoldDrawDownStrategySignal:
         if isinstance(data, pd.Series):
             data = data.to_frame(self.symbol).reset_index() # index is ideally the date
         
+        if self.income:
+            dates = data[date_column]
+            # I should be using pd.Grouper(freq="M")
+            income_dates = dates.groupby(by = [dates.dt.year, dates.dt.month]).max()
+        
         for i, row in tqdm(data.iterrows()):
-            date = row[date_column]
-            price = row[self.symbol]
+            curr_date = row[date_column]
+            curr_price = row[self.symbol]
+
+            if self.income and (curr_date == income_dates).sum():
+                self.monies += self.income
+
             if i == 0:
-                self.start_price = price
-                self.start_date = date
+                self.start_price = curr_price
+                self.start_date = curr_date
             buy, quantity = self.decision(row)
             if buy:
-                self.monies = self.add_position(price=price, date=date, quantity=quantity)
-        self.end_price = price
-        self.end_date = date
+                self.monies = self.add_position(price=curr_price, date=curr_date, quantity=quantity)
+        self.end_price = curr_price
+        self.end_date = curr_date
         self.performance = None # place holder
 
         return None

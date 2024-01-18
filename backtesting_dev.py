@@ -79,9 +79,11 @@ class BuyAndHoldStrategySignal:
             self.holdings.add_position(positions=[position])
         return remainder
     
-    def run(self, data, date_column = 'Date'):
+    def run(self, data: [pd.DataFrame, pd.Series], date_column = 'Date'):
         if isinstance(data, pd.Series):
             data = data.to_frame(self.symbol).reset_index() # index is ideally the date
+        else:
+            data = data.reset_index(drop=True)
 
         if self.income:
             dates = data[date_column]
@@ -157,9 +159,11 @@ class BuyAndHoldDrawDownStrategySignal:
             self.holdings.add_position(positions=[position])
         return remainder
     
-    def run(self, data, date_column = 'Date'):
+    def run(self, data: [pd.DataFrame, pd.Series], date_column = 'Date'):
         if isinstance(data, pd.Series):
             data = data.to_frame(self.symbol).reset_index() # index is ideally the date
+        else:
+            data = data.reset_index(drop=True)
         
         if self.income:
             dates = data[date_column]

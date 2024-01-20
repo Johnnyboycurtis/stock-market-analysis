@@ -62,6 +62,7 @@ class BuyAndHoldStrategySignal:
         self.holdings = Holdings()
         self.monies = monies
         self.income = income
+        self.total_monies = monies
     
     def decision(self, data):
         # buy and hold strategy
@@ -88,6 +89,9 @@ class BuyAndHoldStrategySignal:
         if self.income:
             dates = data[date_column]
             income_dates = dates.groupby(by = [dates.dt.year, dates.dt.month]).max()
+            self.contributions = pd.Series(0, index=dates)
+            self.contributions.iloc[0] = self.monies
+            self.contributions.loc[income_dates] = self.income
         
         for i, row in tqdm(data.iterrows()):
             curr_date = row[date_column]
@@ -96,6 +100,8 @@ class BuyAndHoldStrategySignal:
                 idx = (curr_date == income_dates).sum()
                 if idx:
                     self.monies += self.income
+                    self.total_monies += self.income
+
             if i == 0:
                 self.start_price = curr_price
                 self.start_date = curr_date
@@ -120,6 +126,7 @@ class BuyAndHoldDrawDownStrategySignal:
         self.holdings = Holdings()
         self.monies = monies
         self.income = income
+        self.total_monies = monies
     
     def decision(self, data):
         # features should be a dataframe
@@ -169,6 +176,9 @@ class BuyAndHoldDrawDownStrategySignal:
             dates = data[date_column]
             # I should be using pd.Grouper(freq="M")
             income_dates = dates.groupby(by = [dates.dt.year, dates.dt.month]).max()
+            self.contributions = pd.Series(0, index=dates)
+            self.contributions.iloc[0] = self.monies
+            self.contributions.loc[income_dates] = self.income
         
         for i, row in tqdm(data.iterrows()):
             curr_date = row[date_column]
@@ -176,6 +186,7 @@ class BuyAndHoldDrawDownStrategySignal:
 
             if self.income and (curr_date == income_dates).sum():
                 self.monies += self.income
+                self.total_monies += self.income
 
             if i == 0:
                 self.start_price = curr_price

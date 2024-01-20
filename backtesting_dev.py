@@ -51,9 +51,9 @@ class Holdings:
 
 
 
-class BuyAndHoldStrategySignal:
+class DollarCostAveraging:
     """
-    Very basic buy and hold strategy
+    Very basic buy and hold strategy Dollar Cost Averaging
     Buy and just hold
     Will always return True on decision
     """
@@ -120,7 +120,13 @@ class BuyAndHoldStrategySignal:
 
 
 
-class BuyAndHoldDrawDownStrategySignal:
+class DollarCostAveragingBuyDrawdown:
+    """
+    Dollar Cost Averaging with buy the drawdown strategy
+
+    The strategy looks for when stock prices drop below the 50-day average
+    
+    """
     def __init__(self, symbol: str, monies: [int,float], income: [int,float] = None) -> None:
         self.symbol = symbol.upper()
         self.holdings = Holdings()
@@ -148,10 +154,10 @@ class BuyAndHoldDrawDownStrategySignal:
             return True, min(quantity, 2)
     
         elif ratio < 3:
-            # on average, I want to only buy one share once a week
+            # on average, I want to only buy one or two shares once a week
             # so we'll reduce chances to only buy once a week
             # using random() < 0.2
-            return random() < 0.2, min(quantity, 1)
+            return random() < 0.2, min(quantity, 2)
         
         else:
             return False, 0

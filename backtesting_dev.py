@@ -89,15 +89,15 @@ class DollarCostAveraging:
         if self.income:
             dates = data[date_column]
             income_dates = dates.groupby(by = [dates.dt.year, dates.dt.month]).max()
-            self.contributions = pd.Series(0, index=dates)
+            self.contributions = pd.DataFrame(0, columns = ['contributions', 'available_funds'], index=dates)
             self.contributions.iloc[0] = self.monies
-            self.contributions.loc[income_dates] = self.income
+            self.contributions.loc[income_dates, 'contributions'] = self.income
         
         for i, row in tqdm(data.iterrows()):
             curr_date = row[date_column]
             curr_price = row[self.symbol]
             if self.income:
-                idx = (curr_date == income_dates).sum()
+                idx = (curr_date == income_dates).any()
                 if idx:
                     self.monies += self.income
                     self.total_monies += self.income
@@ -105,7 +105,9 @@ class DollarCostAveraging:
             if i == 0:
                 self.start_price = curr_price
                 self.start_date = curr_date
-            buy, quantity = self.decision(row)
+            # log available funds at the start of the day before purchases
+            self.contributions.loc[curr_date, 'available_funds'] = self.monies
+            buy, quantity = self.decision(row) # decision to purchase, and how much
             if buy:
                 self.monies = self.add_position(price=curr_price, date=curr_date, quantity=quantity) # returns remaining funds
         self.end_price = curr_price
@@ -148,7 +150,7 @@ class DollarCostAveragingBuyDrawdown:
 
 
         if ratio < -5:
-            return True, min(quantity, 4)
+            return True, quantity #min(quantity, 4)
         
         elif ratio < 0:
             return True, min(quantity, 2)
@@ -182,22 +184,24 @@ class DollarCostAveragingBuyDrawdown:
             dates = data[date_column]
             # I should be using pd.Grouper(freq="M")
             income_dates = dates.groupby(by = [dates.dt.year, dates.dt.month]).max()
-            self.contributions = pd.Series(0, index=dates)
+            self.contributions = pd.DataFrame(0, columns = ['contributions', 'available_funds'], index=dates)
             self.contributions.iloc[0] = self.monies
-            self.contributions.loc[income_dates] = self.income
+            self.contributions.loc[income_dates, 'contributions'] = self.income
         
         for i, row in tqdm(data.iterrows()):
             curr_date = row[date_column]
             curr_price = row[self.symbol]
 
-            if self.income and (curr_date == income_dates).sum():
+            if self.income and (curr_date == income_dates).any():
                 self.monies += self.income
                 self.total_monies += self.income
 
             if i == 0:
                 self.start_price = curr_price
                 self.start_date = curr_date
-            buy, quantity = self.decision(row)
+            # log available funds at the start of the day before purchases
+            self.contributions.loc[curr_date, 'available_funds'] = self.monies
+            buy, quantity = self.decision(row) # decision to purchase, and how much
             if buy:
                 self.monies = self.add_position(price=curr_price, date=curr_date, quantity=quantity)
         self.end_price = curr_price
